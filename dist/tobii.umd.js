@@ -29,6 +29,9 @@
       if (el.hasAttribute('data-srcset')) {
         IMAGE.setAttribute('data-srcset', el.getAttribute('data-srcset'));
       }
+      if (el.hasAttribute('data-sizes')) {
+        IMAGE.setAttribute('data-sizes', el.getAttribute('data-sizes'));
+      }
 
       // Add image to figure
       FIGURE.appendChild(IMAGE);
@@ -90,11 +93,16 @@
         container.removeChild(LOADING_INDICATOR);
         FIGURE.style.opacity = '1';
       });
-      IMAGE.setAttribute('src', IMAGE.getAttribute('data-src'));
-      IMAGE.removeAttribute('data-src');
       if (IMAGE.hasAttribute('data-srcset')) {
         IMAGE.setAttribute('srcset', IMAGE.getAttribute('data-srcset'));
+        IMAGE.removeAttribute('data-srcset');
       }
+      if (IMAGE.hasAttribute('data-sizes')) {
+        IMAGE.setAttribute('sizes', IMAGE.getAttribute('data-sizes'));
+        IMAGE.removeAttribute('data-sizes');
+      }
+      IMAGE.setAttribute('src', IMAGE.getAttribute('data-src'));
+      IMAGE.removeAttribute('data-src');
     }
     onLeave(container) {
       // Nothing
@@ -359,7 +367,7 @@
    * Tobii
    *
    * @author midzer
-   * @version 2.6.0
+   * @version 2.6.4
    * @url https://github.com/midzer/tobii
    *
    * MIT License
@@ -1212,8 +1220,8 @@
       }
       event.preventDefault();
       event.stopPropagation();
-      DRAG.startX = DRAG.x = event.pageX;
-      DRAG.startY = DRAG.y = event.pageY;
+      DRAG.startX = DRAG.x = event.clientX;
+      DRAG.startY = DRAG.y = event.clientY;
       DRAG.distance = 0;
 
       // This event is cached to support 2-finger gestures
@@ -1222,10 +1230,10 @@
         const {
           x,
           y
-        } = midPoint(pointerDownCache[0].pageX, pointerDownCache[0].pageY, pointerDownCache[1].pageX, pointerDownCache[1].pageY);
+        } = midPoint(pointerDownCache[0].clientX, pointerDownCache[0].clientY, pointerDownCache[1].clientX, pointerDownCache[1].clientY);
         DRAG.startX = DRAG.x = x;
         DRAG.startY = DRAG.y = y;
-        DRAG.distance = distance(pointerDownCache[0].pageX - pointerDownCache[1].pageX, pointerDownCache[0].pageY - pointerDownCache[1].pageY) / TRANSFORM.scale;
+        DRAG.distance = distance(pointerDownCache[0].clientX - pointerDownCache[1].clientX, pointerDownCache[0].clientY - pointerDownCache[1].clientY) / TRANSFORM.scale;
       }
     };
 
@@ -1245,20 +1253,20 @@
         const {
           x,
           y
-        } = midPoint(pointerDownCache[0].pageX, pointerDownCache[0].pageY, pointerDownCache[1].pageX, pointerDownCache[1].pageY);
-        const scale = distance(pointerDownCache[0].pageX - pointerDownCache[1].pageX, pointerDownCache[0].pageY - pointerDownCache[1].pageY) / DRAG.distance;
+        } = midPoint(pointerDownCache[0].clientX, pointerDownCache[0].clientY, pointerDownCache[1].clientX, pointerDownCache[1].clientY);
+        const scale = distance(pointerDownCache[0].clientX - pointerDownCache[1].clientX, pointerDownCache[0].clientY - pointerDownCache[1].clientY) / DRAG.distance;
         zoomPan(clamp(scale, MIN_SCALE, MAX_SCALE), x, y, x - DRAG.x, y - DRAG.y);
         DRAG.x = x;
         DRAG.y = y;
         return;
       }
       if (isZoomed()) {
-        const deltaX = event.pageX - DRAG.x;
-        const deltaY = event.pageY - DRAG.y;
+        const deltaX = event.clientX - DRAG.x;
+        const deltaY = event.clientY - DRAG.y;
         pan(deltaX, deltaY);
       }
-      DRAG.x = event.pageX;
-      DRAG.y = event.pageY;
+      DRAG.x = event.clientX;
+      DRAG.y = event.clientY;
       if (!isZoomed()) {
         // Drag animation
         const deltaX = DRAG.startX - DRAG.x;
@@ -1281,24 +1289,27 @@
      *
      */
     const pointerupHandler = event => {
-      event.stopPropagation();
+      // Intercept regular click handler
+      if (!pointerDownCache.length) return;
       groups[activeGroup].slider.classList.remove('tobii__slider--is-' + (isZoomed() ? 'moving' : 'dragging'));
 
       // Remove this event from the target's cache
       const index = pointerDownCache.findIndex(cachedEv => cachedEv.pointerId === event.pointerId);
       pointerDownCache.splice(index, 1);
-      const MOVEMENT_X = DRAG.startX - DRAG.x;
-      const MOVEMENT_Y = DRAG.startY - DRAG.y;
-      const MOVEMENT_X_DISTANCE = Math.abs(MOVEMENT_X);
-      const MOVEMENT_Y_DISTANCE = Math.abs(MOVEMENT_Y);
-      if (MOVEMENT_X_DISTANCE || MOVEMENT_Y_DISTANCE) {
+      const x = event.clientX;
+      const y = event.clientY;
+      const deltaX = DRAG.startX - x;
+      const deltaY = DRAG.startY - y;
+      const distanceX = Math.abs(deltaX);
+      const distanceY = Math.abs(deltaY);
+      if (distanceX || distanceY) {
         if (!isZoomed()) {
           // Evaluate drag
-          if (MOVEMENT_X < 0 && MOVEMENT_X_DISTANCE > userSettings.threshold && groups[activeGroup].currentIndex > 0) {
+          if (deltaX < 0 && distanceX > userSettings.threshold && groups[activeGroup].currentIndex > 0) {
             previous();
-          } else if (MOVEMENT_X > 0 && MOVEMENT_X_DISTANCE > userSettings.threshold && groups[activeGroup].currentIndex !== groups[activeGroup].elementsLength - 1) {
+          } else if (deltaX > 0 && distanceX > userSettings.threshold && groups[activeGroup].currentIndex !== groups[activeGroup].elementsLength - 1) {
             next();
-          } else if (MOVEMENT_Y > 0 && MOVEMENT_Y_DISTANCE > userSettings.threshold && userSettings.swipeClose) {
+          } else if (deltaY > 0 && distanceY > userSettings.threshold && userSettings.swipeClose) {
             close();
           } else {
             updateOffset();
@@ -1315,7 +1326,7 @@
           if (isZoomed()) {
             resetZoom();
           } else {
-            zoomPan(MAX_SCALE / 2, event.clientX, event.clientY, 0, 0);
+            zoomPan(MAX_SCALE / 2, x, y, 0, 0);
           }
         } else {
           lastTapTime = currentTime;
@@ -1329,10 +1340,10 @@
                 right,
                 width
               } = event.target.getBoundingClientRect();
-              if (DRAG.startY < top || DRAG.startY > bottom || !lastTapTime) return;
-              if (DRAG.startX > left && DRAG.startX < left + width / 2) {
+              if (y < top || y > bottom || !lastTapTime) return;
+              if (x > left && x < left + width / 2) {
                 previous();
-              } else if (DRAG.startX < right && DRAG.startX > right - width / 2) {
+              } else if (x < right && x > right - width / 2) {
                 next();
               }
             }, DOUBLE_TAP_TIME);
@@ -1350,8 +1361,7 @@
       if (!isZoomed() && !deltaScale) return;
       event.preventDefault();
       const newScale = TRANSFORM.scale + deltaScale / (SCALE_SENSITIVITY / TRANSFORM.scale);
-      const pageY = event.pageY - window.scrollY;
-      zoomPan(clamp(newScale, MIN_SCALE, MAX_SCALE), event.pageX, pageY, 0, 0);
+      zoomPan(clamp(newScale, MIN_SCALE, MAX_SCALE), event.clientX, event.clientY, 0, 0);
     };
     const clampedTranslate = (axis, translate) => {
       // Whole clamping functionality heavily inspired
