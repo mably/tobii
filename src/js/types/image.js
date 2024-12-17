@@ -15,6 +15,8 @@ class ImageType {
 
     // Accessibility: allow setting focus programmatically on figure elements.
     FIGURE.tabIndex = '-1'
+    // Add role="group" to figure
+    FIGURE.setAttribute('role', 'group');
 
     // Hide figure until the image is loaded
     FIGURE.style.opacity = '0'
@@ -61,6 +63,9 @@ class ImageType {
         FIGURE.appendChild(FIGCAPTION)
 
         IMAGE.setAttribute('aria-labelledby', FIGCAPTION.id)
+
+        // Add aria-label to the figure containing the caption content
+        FIGURE.setAttribute('aria-label', FIGCAPTION.textContent);
 
         ++this.figcaptionId
       }
