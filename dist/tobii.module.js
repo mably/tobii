@@ -11,8 +11,8 @@ class ImageType {
     const THUMBNAIL = el.querySelector('img');
     const LOADING_INDICATOR = document.createElement('div');
 
-    // Accessibility: allow setting focus on figure elements.
-    FIGURE.tabIndex = '0';
+    // Accessibility: allow setting focus programmatically on figure elements.
+    FIGURE.tabIndex = '-1';
 
     // Hide figure until the image is loaded
     FIGURE.style.opacity = '0';
@@ -362,7 +362,7 @@ class YoutubeType {
  * Tobii
  *
  * @author midzer
- * @version 2.6.4
+ * @version 2.6.6
  * @url https://github.com/midzer/tobii
  *
  * MIT License
@@ -379,7 +379,7 @@ function Tobii(userOptions) {
     iframe: new IframeType(),
     youtube: new YoutubeType()
   };
-  const FOCUSABLE_ELEMENTS = ['a[href]:not([tabindex^="-"]):not([inert])', 'area[href]:not([tabindex^="-"]):not([inert])', 'input:not([disabled]):not([inert])', 'select:not([disabled]):not([inert])', 'textarea:not([disabled]):not([inert])', 'button:not([disabled]):not([inert])', 'figure:not([tabindex^="-"]):not([inert])', 'iframe:not([tabindex^="-"]):not([inert])', 'audio:not([tabindex^="-"]):not([inert])', 'video:not([tabindex^="-"]):not([inert])', '[contenteditable]:not([tabindex^="-"]):not([inert])', '[tabindex]:not([tabindex^="-"]):not([inert])'];
+  const FOCUSABLE_ELEMENTS = ['a[href]:not([tabindex^="-"]):not([inert])', 'area[href]:not([tabindex^="-"]):not([inert])', 'input:not([disabled]):not([inert])', 'select:not([disabled]):not([inert])', 'textarea:not([disabled]):not([inert])', 'button:not([disabled]):not([inert])', 'iframe:not([tabindex^="-"]):not([inert])', 'audio:not([tabindex^="-"]):not([inert])', 'video:not([tabindex^="-"]):not([inert])', '[contenteditable]:not([tabindex^="-"]):not([inert])', '[tabindex]:not([tabindex^="-"]):not([inert])'];
   let userSettings = {};
   const WAITING_ELS = [];
   const GROUP_ATTS = {
@@ -1035,6 +1035,7 @@ function Tobii(userOptions) {
     DRAG.distance = 0;
     lastTapTime = 0;
     if (isZoomed()) resetZoom();
+    TRANSFORM.element = null;
   };
 
   /**
@@ -1060,15 +1061,6 @@ function Tobii(userOptions) {
    * @param {string|null} dir - Current slide direction
    */
   const updateFocus = dir => {
-    if (groups[activeGroup].elementsLength > 0) {
-      const FOCUSABLE_CHILDREN = getFocusableChildren();
-      if (FOCUSABLE_CHILDREN.length > 0) {
-        setTimeout(() => {
-          FOCUSABLE_CHILDREN[FOCUSABLE_CHILDREN.length - 1].focus();
-        }, 100);
-        return;
-      }
-    }
     if ((userSettings.nav === true || userSettings.nav === 'auto') && !isTouchDevice() && groups[activeGroup].elementsLength > 1) {
       prevButton.setAttribute('aria-hidden', 'true');
       prevButton.disabled = true;
@@ -1106,6 +1098,15 @@ function Tobii(userOptions) {
       }
     } else if (userSettings.close) {
       closeButton.focus();
+    }
+    // If there is a focusable figure element, and we are not displaying the first slide.
+    if (groups[activeGroup].elementsLength > 1 && groups[activeGroup].currentIndex !== 0) {
+      const FOCUSABLE_FIGURE = getFocusableFigure();
+      if (FOCUSABLE_FIGURE.length > 0) {
+        setTimeout(() => {
+          FOCUSABLE_FIGURE[FOCUSABLE_FIGURE.length - 1].focus();
+        }, 100);
+      }
     }
   };
 
@@ -1154,6 +1155,15 @@ function Tobii(userOptions) {
   };
 
   /**
+   * Get the programmatically focusable figure of the given element
+   *
+   * @return {Array<Element>}
+   */
+  const getFocusableFigure = () => {
+    return Array.prototype.slice.call(lightbox.querySelectorAll('.tobii__slide--is-active figure[tabindex="-1"]'));
+  };
+
+  /**
    * Keydown event handler
    *
    * @TODO: Remove the deprecated event.keyCode when Edge support event.code and we drop f*cking IE
@@ -1172,7 +1182,7 @@ function Tobii(userOptions) {
         // If the SHIFT key is not being pressed (moving forwards) and the currently
         // focused item is the last one, move the focus to the first focusable item
         // from the slide
-      } else if (!event.shiftKey && FOCUSED_ITEM_INDEX === FOCUSABLE_CHILDREN.length - 1) {
+      } else if (!event.shiftKey && (FOCUSED_ITEM_INDEX === FOCUSABLE_CHILDREN.length - 1 || FOCUSED_ITEM_INDEX === -1)) {
         FOCUSABLE_CHILDREN[0].focus();
         event.preventDefault();
       }
@@ -1430,7 +1440,6 @@ function Tobii(userOptions) {
     TRANSFORM.translateX = 0;
     TRANSFORM.translateY = 0;
     pan(0, 0);
-    TRANSFORM.element = null;
   };
 
   /**
