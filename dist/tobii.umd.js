@@ -491,8 +491,7 @@
      */
     const init = userOptions => {
       if (document.querySelector('div.tobii')) {
-        console.log('Multiple lightbox instances not supported.');
-        return;
+        console.log('Multiple lightbox instances are not officially supported.');
       }
 
       // Merge user options into defaults
