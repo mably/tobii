@@ -1144,7 +1144,7 @@ function Tobii(userOptions) {
       previous();
     } else if (event.target === nextButton) {
       next();
-    } else if (event.target === closeButton || event.target.classList.contains('tobii__slide') && userSettings.docClose) {
+    } else if (event.target === closeButton || event.target.classList.contains('tobii__slide') || event.target.classList.contains('tobii') && userSettings.docClose) {
       close();
     }
     event.stopPropagation();
