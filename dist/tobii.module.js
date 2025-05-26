@@ -44,13 +44,42 @@ class ImageType {
       } else if (this.userSettings.captionsSelector === 'img' && THUMBNAIL && THUMBNAIL.getAttribute(this.userSettings.captionAttribute)) {
         captionContent = THUMBNAIL.getAttribute(this.userSettings.captionAttribute);
       }
-      if (this.userSettings.captionHTML) {
-        FIGCAPTION.innerHTML = captionContent;
-      } else {
-        FIGCAPTION.textContent = captionContent;
-      }
+      FIGCAPTION.id = `tobii-figcaption-${this.figcaptionId}`;
       if (captionContent) {
-        FIGCAPTION.id = `tobii-figcaption-${this.figcaptionId}`;
+        const SPAN = document.createElement('span');
+        if (this.userSettings.captionHTML) {
+          SPAN.innerHTML = captionContent;
+        } else {
+          SPAN.textContent = captionContent;
+        }
+        FIGCAPTION.appendChild(SPAN);
+        if (this.userSettings.captionToggle) {
+          const BUTTON = document.createElement('button');
+          BUTTON.className = 'caption-toggle';
+          BUTTON.title = this.userSettings.captionToggleLabel[0];
+          BUTTON.innerText = this.userSettings.captionToggleLabel[0];
+          BUTTON.setAttribute('aria-controls', FIGCAPTION.id);
+          BUTTON.setAttribute('aria-expanded', true);
+          BUTTON.addEventListener('pointerdown', event => {
+            event.preventDefault();
+            event.stopPropagation();
+          });
+          BUTTON.addEventListener('pointerup', event => {
+            event.preventDefault();
+            event.stopPropagation();
+          });
+          BUTTON.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const isExpanded = BUTTON.getAttribute('aria-expanded') === 'true';
+            const buttonLabel = isExpanded ? this.userSettings.captionToggleLabel[1] : this.userSettings.captionToggleLabel[0];
+            BUTTON.title = buttonLabel;
+            BUTTON.innerText = buttonLabel;
+            BUTTON.setAttribute('aria-expanded', !isExpanded);
+            SPAN.setAttribute('aria-hidden', isExpanded);
+          });
+          FIGCAPTION.appendChild(BUTTON);
+        }
         FIGURE.appendChild(FIGCAPTION);
         IMAGE.setAttribute('aria-labelledby', FIGCAPTION.id);
 
@@ -443,6 +472,8 @@ function Tobii(userOptions) {
       captionAttribute: 'alt',
       captionText: null,
       captionHTML: false,
+      captionToggle: false,
+      captionToggleLabel: ['Hide caption', 'Show caption'],
       nav: 'auto',
       navText: ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="15 6 9 12 15 18" /></svg>', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="9 6 15 12 9 18" /></svg>'],
       navLabel: ['Previous image', 'Next image'],
