@@ -473,7 +473,7 @@ function Tobii(userOptions) {
       captionAttribute: 'alt',
       captionText: null,
       captionHTML: false,
-      captionToggle: false,
+      captionToggle: true,
       captionToggleLabel: ['Hide caption', 'Show caption'],
       nav: 'auto',
       navText: ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="15 6 9 12 15 18" /></svg>', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="9 6 15 12 9 18" /></svg>'],
@@ -514,10 +514,6 @@ function Tobii(userOptions) {
    *
    */
   const init = userOptions => {
-    if (document.querySelector('div.tobii')) {
-      console.log('Multiple lightbox instances are not officially supported.');
-    }
-
     // Merge user options into defaults
     userSettings = mergeOptions(userOptions);
 
