@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.8.2
+
+### Fixed
+
+- fix aria-label of figure
+- tweak caption-toggle CSS
+
+## v2.8.1
+
+### Fixed
+
+- Allow multiple lightbox instances
+
+## v2.8.0
+
+### New
+
+- Toggle caption display on click/touch
+
+## v2.7.3
+
+### Fixed
+
+- Fix unclickable top region for docClose
+
+## v2.7.2
+
+### Fixed
+
+- Encapsulate counter text in P element for better accessibility compliance
+- Add new dialogTitle setting to allow dialog title customization for better accessibility compliance
+- Revert "fix not clickable close() region for slider"
+
 ## v2.7.1
 
 ### Fixed
