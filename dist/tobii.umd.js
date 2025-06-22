@@ -392,7 +392,7 @@
    * Tobii
    *
    * @author midzer
-   * @version 2.8.2
+   * @version 2.8.3
    * @url https://github.com/midzer/tobii
    *
    * MIT License
@@ -1091,52 +1091,37 @@
      * @param {string|null} dir - Current slide direction
      */
     const updateFocus = dir => {
-      if ((userSettings.nav === true || userSettings.nav === 'auto') && !isTouchDevice() && groups[activeGroup].elementsLength > 1) {
-        prevButton.setAttribute('aria-hidden', 'true');
-        prevButton.disabled = true;
-        nextButton.setAttribute('aria-hidden', 'true');
-        nextButton.disabled = true;
-
-        // If there is only one slide
-        if (groups[activeGroup].elementsLength === 1) {
-          if (userSettings.close) {
-            closeButton.focus();
-          }
+      const group = groups[activeGroup];
+      const isNavEnabled = userSettings.nav === true || userSettings.nav === 'auto';
+      const hasMultipleSlides = group.elementsLength > 1;
+      if (isNavEnabled && !isTouchDevice() && hasMultipleSlides) {
+        setButtonState(prevButton, true, true);
+        setButtonState(nextButton, true, true);
+        if (group.currentIndex === 0) {
+          setButtonState(nextButton, false, false);
+          nextButton.focus();
+        } else if (group.currentIndex === group.elementsLength - 1) {
+          setButtonState(prevButton, false, false);
+          prevButton.focus();
         } else {
-          // If the first slide is displayed
-          if (groups[activeGroup].currentIndex === 0) {
-            nextButton.setAttribute('aria-hidden', 'false');
-            nextButton.disabled = false;
-            nextButton.focus();
-
-            // If the last slide is displayed
-          } else if (groups[activeGroup].currentIndex === groups[activeGroup].elementsLength - 1) {
-            prevButton.setAttribute('aria-hidden', 'false');
-            prevButton.disabled = false;
+          setButtonState(prevButton, false, false);
+          setButtonState(nextButton, false, false);
+          if (dir === 'left') {
             prevButton.focus();
           } else {
-            prevButton.setAttribute('aria-hidden', 'false');
-            prevButton.disabled = false;
-            nextButton.setAttribute('aria-hidden', 'false');
-            nextButton.disabled = false;
-            if (dir === 'left') {
-              prevButton.focus();
-            } else {
-              nextButton.focus();
-            }
+            nextButton.focus();
           }
         }
       } else if (userSettings.close) {
         closeButton.focus();
       }
-      // If there is a focusable figure element, and we are not displaying the first slide.
-      if (groups[activeGroup].elementsLength > 1 && groups[activeGroup].currentIndex !== 0) {
-        const FOCUSABLE_FIGURE = getFocusableFigure();
-        if (FOCUSABLE_FIGURE) {
-          // The small delay is required to avoid an annoying display bug.
+      if (hasMultipleSlides && group.currentIndex !== 0) {
+        const focusableFigure = getFocusableFigure();
+        if (focusableFigure) {
+          // Small delay to avoid display bug
           setTimeout(() => {
-            FOCUSABLE_FIGURE.focus();
-          }, 100);
+            focusableFigure.focus();
+          }, 250);
         }
       }
     };
@@ -1192,6 +1177,15 @@
      */
     const getFocusableFigure = () => {
       return lightbox.querySelector('.tobii__slide--is-active figure[tabindex="-1"]');
+    };
+
+    /**
+     * Set the hidden/disabled state of a button
+     *
+     */
+    const setButtonState = (button, hidden, disabled) => {
+      button.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+      button.disabled = disabled;
     };
 
     /**
@@ -1542,29 +1536,16 @@
      *
      */
     const updateConfig = () => {
-      if (userSettings.draggable && !groups[activeGroup].slider.classList.contains('tobii__slider--is-draggable')) {
-        groups[activeGroup].slider.classList.add('tobii__slider--is-draggable');
+      const group = groups[activeGroup];
+      const slider = group.slider;
+      if (userSettings.draggable && !slider.classList.contains('tobii__slider--is-draggable')) {
+        slider.classList.add('tobii__slider--is-draggable');
       }
-
-      // Hide buttons if necessary
-      if (!userSettings.nav || groups[activeGroup].elementsLength === 1 || userSettings.nav === 'auto' && isTouchDevice()) {
-        prevButton.setAttribute('aria-hidden', 'true');
-        prevButton.disabled = true;
-        nextButton.setAttribute('aria-hidden', 'true');
-        nextButton.disabled = true;
-      } else {
-        prevButton.setAttribute('aria-hidden', 'false');
-        prevButton.disabled = false;
-        nextButton.setAttribute('aria-hidden', 'false');
-        nextButton.disabled = false;
-      }
-
-      // Hide counter if necessary
-      if (!userSettings.counter || groups[activeGroup].elementsLength === 1) {
-        counter.setAttribute('aria-hidden', 'true');
-      } else {
-        counter.setAttribute('aria-hidden', 'false');
-      }
+      const hideButtons = !userSettings.nav || group.elementsLength === 1 || userSettings.nav === 'auto' && isTouchDevice();
+      setButtonState(prevButton, hideButtons, hideButtons);
+      setButtonState(nextButton, hideButtons, hideButtons);
+      const hideCounter = !userSettings.counter || group.elementsLength === 1;
+      counter.setAttribute('aria-hidden', hideCounter ? 'true' : 'false');
     };
 
     /**
