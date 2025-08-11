@@ -626,7 +626,6 @@ function Tobii(userOptions) {
 
       // Bind click event handler
       el.addEventListener('click', triggerTobii);
-      const model = getModel(el);
 
       // Create slide
       const SLIDER_ELEMENT = document.createElement('div');
@@ -639,6 +638,7 @@ function Tobii(userOptions) {
       SLIDER_ELEMENT.setAttribute('aria-hidden', 'true');
 
       // Create type elements
+      const model = getModel(el);
       model.init(el, SLIDER_ELEMENT_CONTENT, userSettings);
 
       // Add slide content container to slider element
@@ -1278,7 +1278,7 @@ function Tobii(userOptions) {
         y
       } = midPoint(pointerDownCache[0].clientX, pointerDownCache[0].clientY, pointerDownCache[1].clientX, pointerDownCache[1].clientY);
       const scale = distance(pointerDownCache[0].clientX - pointerDownCache[1].clientX, pointerDownCache[0].clientY - pointerDownCache[1].clientY) / DRAG.distance;
-      zoomPan(clamp(scale, MIN_SCALE, MAX_SCALE), x, y, x - DRAG.x, y - DRAG.y);
+      zoomPan(event.target, clamp(scale, MIN_SCALE, MAX_SCALE), x, y, x - DRAG.x, y - DRAG.y);
       DRAG.x = x;
       DRAG.y = y;
       return;
@@ -1349,7 +1349,7 @@ function Tobii(userOptions) {
         if (isZoomed()) {
           resetZoom();
         } else {
-          zoomPan(MAX_SCALE / 2, x, y, 0, 0);
+          zoomPan(event.target, MAX_SCALE / 2, x, y, 0, 0);
         }
       } else {
         lastTapTime = now;
@@ -1380,11 +1380,14 @@ function Tobii(userOptions) {
    *
    */
   const wheelHandler = event => {
+    if (!isZoomableElement(event.target)) {
+      return;
+    }
     const deltaScale = Math.sign(event.deltaY) > 0 ? -1 : 1;
     if (!isZoomed() && !deltaScale) return;
     event.preventDefault();
     const newScale = TRANSFORM.scale + deltaScale / (SCALE_SENSITIVITY / TRANSFORM.scale);
-    zoomPan(clamp(newScale, MIN_SCALE, MAX_SCALE), event.clientX, event.clientY, 0, 0);
+    zoomPan(event.target, clamp(newScale, MIN_SCALE, MAX_SCALE), event.clientX, event.clientY, 0, 0);
   };
   const clampedTranslate = (axis, translate) => {
     // Whole clamping functionality heavily inspired
@@ -1429,18 +1432,17 @@ function Tobii(userOptions) {
     element.style.transformOrigin = `${originX}px ${originY}px`;
     element.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
   };
-  const zoomPan = (newScale, x, y, deltaX, deltaY) => {
-    if (!TRANSFORM.element) {
-      TRANSFORM.element = lightbox.querySelector('.tobii__slide--is-active img');
-    }
+  const zoomPan = (el, newScale, x, y, deltaX, deltaY) => {
+    if (!isZoomableElement(el)) return;
     const {
       left,
       top
-    } = TRANSFORM.element.getBoundingClientRect();
+    } = el.getBoundingClientRect();
     const originX = x - left;
     const originY = y - top;
     const newOriginX = originX / TRANSFORM.scale;
     const newOriginY = originY / TRANSFORM.scale;
+    TRANSFORM.element = el;
     TRANSFORM.originX = newOriginX;
     TRANSFORM.originY = newOriginY;
     TRANSFORM.scale = newScale;
@@ -1606,11 +1608,19 @@ function Tobii(userOptions) {
   };
 
   /**
-   * Checks whether element's nodeName is part of array
+   * Checks whether element's tagName is part of array
    *
    */
   const isIgnoreElement = el => {
-    return ['TEXTAREA', 'OPTION', 'INPUT', 'SELECT'].indexOf(el.nodeName) !== -1 || el === prevButton || el === nextButton || el === closeButton;
+    return ['TEXTAREA', 'OPTION', 'INPUT', 'SELECT'].indexOf(el.tagName) !== -1 || el === prevButton || el === nextButton || el === closeButton;
+  };
+
+  /**
+   * Checks whether an element is zoomable
+   *
+   */
+  const isZoomableElement = el => {
+    return el.tagName === 'IMG';
   };
 
   /**
