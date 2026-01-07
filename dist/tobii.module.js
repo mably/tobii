@@ -36,9 +36,9 @@ class ImageType {
     let captionContent;
     if (typeof this.userSettings.captionText === 'function') {
       captionContent = this.userSettings.captionText(el);
-    } else if (this.userSettings.captionsSelector === 'self' && el.getAttribute(this.userSettings.captionAttribute)) {
+    } else if (this.userSettings.captionsSelector === 'self' && el.hasAttribute(this.userSettings.captionAttribute)) {
       captionContent = el.getAttribute(this.userSettings.captionAttribute);
-    } else if (this.userSettings.captionsSelector === 'img' && THUMBNAIL && THUMBNAIL.getAttribute(this.userSettings.captionAttribute)) {
+    } else if (this.userSettings.captionsSelector === 'img' && THUMBNAIL && THUMBNAIL.hasAttribute(this.userSettings.captionAttribute)) {
       captionContent = THUMBNAIL.getAttribute(this.userSettings.captionAttribute);
     }
     if (this.userSettings.captions && captionContent) {
@@ -143,7 +143,7 @@ class IframeType {
     this.userSettings = userSettings;
     const HREF = el.hasAttribute('data-target') ? el.getAttribute('data-target') : el.getAttribute('href');
     container.setAttribute('data-HREF', HREF);
-    if (el.getAttribute('data-allow')) {
+    if (el.hasAttribute('data-allow')) {
       container.setAttribute('data-allow', el.getAttribute('data-allow'));
     }
     if (el.hasAttribute('data-width')) {
@@ -187,10 +187,10 @@ class IframeType {
       } else if (container.hasAttribute('data-allow')) {
         IFRAME.setAttribute('allow', container.getAttribute('data-allow'));
       }
-      if (container.getAttribute('data-width')) {
+      if (container.hasAttribute('data-width')) {
         IFRAME.style.maxWidth = `${container.getAttribute('data-width')}`;
       }
-      if (container.getAttribute('data-height')) {
+      if (container.hasAttribute('data-height')) {
         IFRAME.style.maxHeight = `${container.getAttribute('data-height')}`;
       }
 
@@ -238,7 +238,7 @@ class HtmlType {
   init(el, container, userSettings) {
     this.userSettings = userSettings;
     const TARGET_SELECTOR = el.hasAttribute('data-target') ? el.getAttribute('data-target') : el.getAttribute('href');
-    const TARGET = document.querySelector(TARGET_SELECTOR).cloneNode(true);
+    const TARGET = document.querySelector(TARGET_SELECTOR);
     if (!TARGET) {
       throw new Error(`Ups, I can't find the target ${TARGET_SELECTOR}.`);
     }
@@ -260,17 +260,14 @@ class HtmlType {
         // Continue where video was stopped
         VIDEO.currentTime = VIDEO.getAttribute('data-time');
       }
-      if (this.userSettings.autoplayVideo) {
-        // Start playback (and loading if necessary)
-        VIDEO.play();
-      }
+
+      // Start playback (and loading if necessary)
+      VIDEO.play();
     }
     const audio = container.querySelector('audio');
     if (audio) {
-      if (this.userSettings.autoplayAudio) {
-        // Start playback (and loading if necessary)
-        audio.play();
-      }
+      // Start playback (and loading if necessary)
+      audio.play();
     }
     container.classList.add('tobii-group-' + group);
   }
@@ -364,9 +361,7 @@ class YoutubeType {
     // Nothing
   }
   onLoad(container) {
-    if (this.userSettings.autoplayVideo) {
-      this.PLAYER[container.getAttribute('data-player')].playVideo();
-    }
+    this.PLAYER[container.getAttribute('data-player')].playVideo();
   }
   onLeave(container) {
     if (this.PLAYER[container.getAttribute('data-player')].getPlayerState() === 1) {
@@ -387,7 +382,7 @@ class YoutubeType {
  * Tobii
  *
  * @author midzer
- * @version 2.8.4
+ * @version 3.1.1
  * @url https://github.com/midzer/tobii
  *
  * MIT License
@@ -473,26 +468,14 @@ function Tobii(userOptions) {
       dialogTitle: 'Lightbox',
       loadingIndicatorLabel: 'Image loading',
       counter: true,
-      download: false,
-      // TODO
-      downloadText: '',
-      // TODO
-      downloadLabel: 'Download image',
-      // TODO
       keyboard: true,
-      zoom: true,
+      zoom: false,
       zoomText: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="16 4 20 4 20 8" /><line x1="14" y1="10" x2="20" y2="4" /><polyline points="8 20 4 20 4 16" /><line x1="4" y1="20" x2="10" y2="14" /><polyline points="16 20 20 20 20 16" /><line x1="14" y1="14" x2="20" y2="20" /><polyline points="8 4 4 4 4 8" /><line x1="4" y1="4" x2="10" y2="10" /></svg>',
       docClose: true,
       swipeClose: true,
       hideScrollbar: true,
       draggable: true,
       threshold: 100,
-      rtl: false,
-      // TODO
-      loop: false,
-      // TODO
-      autoplayVideo: false,
-      modal: false,
       theme: 'tobii--theme-default'
     };
     return {
@@ -509,39 +492,58 @@ function Tobii(userOptions) {
     // Merge user options into defaults
     userSettings = mergeOptions(userOptions);
 
-    // Check if the lightbox already exists
-    if (!lightbox) {
-      createLightbox();
-    }
+    // Create the lightbox container
+    lightbox = document.createElement('div');
+    lightbox.setAttribute('role', 'dialog');
+    lightbox.setAttribute('aria-hidden', 'true');
+    lightbox.setAttribute('aria-modal', 'true');
+    lightbox.setAttribute('aria-label', userSettings.dialogTitle);
+    lightbox.classList.add('tobii');
+
+    // Add theme class
+    lightbox.classList.add(userSettings.theme);
+
+    // Create the previous button
+    prevButton = document.createElement('button');
+    prevButton.className = 'tobii__btn tobii__btn--previous';
+    prevButton.setAttribute('type', 'button');
+    prevButton.setAttribute('aria-label', userSettings.navLabel[0]);
+    prevButton.innerHTML = userSettings.navText[0];
+    lightbox.appendChild(prevButton);
+
+    // Create the next button
+    nextButton = document.createElement('button');
+    nextButton.className = 'tobii__btn tobii__btn--next';
+    nextButton.setAttribute('type', 'button');
+    nextButton.setAttribute('aria-label', userSettings.navLabel[1]);
+    nextButton.innerHTML = userSettings.navText[1];
+    lightbox.appendChild(nextButton);
+
+    // Create the close button
+    closeButton = document.createElement('button');
+    closeButton.className = 'tobii__btn tobii__btn--close';
+    closeButton.setAttribute('type', 'button');
+    closeButton.setAttribute('aria-label', userSettings.closeLabel);
+    closeButton.innerHTML = userSettings.closeText;
+    lightbox.appendChild(closeButton);
+
+    // Create the counter
+    counter = document.createElement('div');
+    counter.className = 'tobii__counter';
+    lightbox.appendChild(counter);
+
+    // Append to body
+    document.body.appendChild(lightbox);
+
+    // Init only
+    if (!userSettings.selector) return;
 
     // Get a list of all elements within the document
     const LIGHTBOX_TRIGGER_ELS = document.querySelectorAll(userSettings.selector);
     if (!LIGHTBOX_TRIGGER_ELS) {
       throw new Error(`Ups, I can't find the selector ${userSettings.selector} on this website.`);
     }
-
-    // Execute a few things once per element
-    const uniqueMap = [];
-    LIGHTBOX_TRIGGER_ELS.forEach(lightboxTriggerEl => {
-      const group = lightboxTriggerEl.hasAttribute('data-group') ? lightboxTriggerEl.getAttribute('data-group') : 'default';
-      let uid = lightboxTriggerEl.href;
-      if (lightboxTriggerEl.hasAttribute('data-target')) {
-        uid = lightboxTriggerEl.getAttribute('data-target');
-      }
-      uid += '__' + group;
-      if (typeof uniqueMap[uid] !== 'undefined') {
-        // duplicate - skip, but still open lightbox on click
-        lightboxTriggerEl.addEventListener('click', event => {
-          selectGroup(group);
-          open();
-          event.preventDefault();
-        });
-      } else {
-        // new element
-        uniqueMap[uid] = 1;
-        checkDependencies(lightboxTriggerEl);
-      }
-    });
+    LIGHTBOX_TRIGGER_ELS.forEach(el => checkDependencies(el));
   };
 
   /**
@@ -668,96 +670,45 @@ function Tobii(userOptions) {
     const GROUP_NAME = getGroupName(el);
 
     // Check if element exists
-    if (groups[GROUP_NAME].gallery.indexOf(el) === -1) {
+    const galleryIndex = groups[GROUP_NAME].gallery.indexOf(el);
+    if (galleryIndex === -1) {
       throw new Error(`Ups, I can't find a slide for the element ${el}.`);
-    } else {
-      const SLIDE_INDEX = groups[GROUP_NAME].gallery.indexOf(el);
-      const SLIDE_EL = groups[GROUP_NAME].sliderElements[SLIDE_INDEX];
-
-      // If the element to be removed is the currently visible slide
-      if (isOpen() && GROUP_NAME === activeGroup && SLIDE_INDEX === groups[GROUP_NAME].currentIndex) {
-        if (groups[GROUP_NAME].elementsLength === 1) {
-          close();
-          throw new Error('Ups, I\'ve closed. There are no slides more to show.');
-        } else {
-          // TODO If there is only one slide left, deactivate horizontal dragging/ swiping
-          // TODO Set new absolute position per slide
-
-          // If the first slide is displayed
-          if (groups[GROUP_NAME].currentIndex === 0) {
-            next();
-          } else {
-            previous();
-          }
-          updateConfig();
-          updateLightbox();
-        }
-      }
-      groups[GROUP_NAME].gallery.splice(groups[GROUP_NAME].gallery.indexOf(el));
-      groups[GROUP_NAME].sliderElements.splice(groups[GROUP_NAME].gallery.indexOf(el));
-      groups[GROUP_NAME].elementsLength--;
-      --groups[GROUP_NAME].x;
-
-      // Remove zoom icon if necessary
-      if (userSettings.zoom && el.querySelector('.tobii-zoom__icon')) {
-        const ZOOM_ICON = el.querySelector('.tobii-zoom__icon');
-        ZOOM_ICON.parentNode.classList.remove('tobii-zoom');
-        ZOOM_ICON.parentNode.removeChild(ZOOM_ICON);
-      }
-
-      // Unbind click event handler
-      el.removeEventListener('click', triggerTobii);
-
-      // Remove slide
-      SLIDE_EL.parentNode.removeChild(SLIDE_EL);
     }
-  };
+    const SLIDE_EL = groups[GROUP_NAME].sliderElements[galleryIndex];
 
-  /**
-   * Create the lightbox
-   *
-   */
-  const createLightbox = () => {
-    // Create the lightbox container
-    lightbox = document.createElement('div');
-    lightbox.setAttribute('role', 'dialog');
-    lightbox.setAttribute('aria-hidden', 'true');
-    lightbox.setAttribute('aria-modal', 'true');
-    lightbox.setAttribute('aria-label', userSettings.dialogTitle);
-    lightbox.classList.add('tobii');
+    // If the element to be removed is the currently visible slide
+    if (isOpen() && GROUP_NAME === activeGroup && galleryIndex === groups[GROUP_NAME].currentIndex) {
+      if (groups[GROUP_NAME].elementsLength === 1) {
+        close();
+        throw new Error('Ups, I\'ve closed. There are no slides more to show.');
+      } else {
+        // Navigate away before removal
+        if (groups[GROUP_NAME].currentIndex === 0) {
+          next();
+        } else {
+          previous();
+        }
+        updateConfig();
+        updateLightbox();
+      }
+    }
+    groups[GROUP_NAME].gallery.splice(galleryIndex, 1);
+    groups[GROUP_NAME].sliderElements.splice(galleryIndex, 1);
+    groups[GROUP_NAME].elementsLength--;
+    --groups[GROUP_NAME].x;
 
-    // Adc theme class
-    lightbox.classList.add(userSettings.theme);
+    // Remove zoom icon if necessary
+    if (userSettings.zoom && el.querySelector('.tobii-zoom__icon')) {
+      const ZOOM_ICON = el.querySelector('.tobii-zoom__icon');
+      ZOOM_ICON.parentNode.classList.remove('tobii-zoom');
+      ZOOM_ICON.parentNode.removeChild(ZOOM_ICON);
+    }
 
-    // Create the previous button
-    prevButton = document.createElement('button');
-    prevButton.className = 'tobii__btn tobii__btn--previous';
-    prevButton.setAttribute('type', 'button');
-    prevButton.setAttribute('aria-label', userSettings.navLabel[0]);
-    prevButton.innerHTML = userSettings.navText[0];
-    lightbox.appendChild(prevButton);
+    // Unbind click event handler
+    el.removeEventListener('click', triggerTobii);
 
-    // Create the next button
-    nextButton = document.createElement('button');
-    nextButton.className = 'tobii__btn tobii__btn--next';
-    nextButton.setAttribute('type', 'button');
-    nextButton.setAttribute('aria-label', userSettings.navLabel[1]);
-    nextButton.innerHTML = userSettings.navText[1];
-    lightbox.appendChild(nextButton);
-
-    // Create the close button
-    closeButton = document.createElement('button');
-    closeButton.className = 'tobii__btn tobii__btn--close';
-    closeButton.setAttribute('type', 'button');
-    closeButton.setAttribute('aria-label', userSettings.closeLabel);
-    closeButton.innerHTML = userSettings.closeText;
-    lightbox.appendChild(closeButton);
-
-    // Create the counter
-    counter = document.createElement('div');
-    counter.className = 'tobii__counter';
-    lightbox.appendChild(counter);
-    document.body.appendChild(lightbox);
+    // Remove slide
+    SLIDE_EL.parentNode.removeChild(SLIDE_EL);
   };
   const getModel = el => {
     const type = el.getAttribute('data-type');
@@ -1186,13 +1137,11 @@ function Tobii(userOptions) {
   /**
    * Keydown event handler
    *
-   * @TODO: Remove the deprecated event.keyCode when Edge support event.code and we drop f*cking IE
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
    */
   const keydownHandler = event => {
     const FOCUSABLE_CHILDREN = getFocusableChildren();
     const FOCUSED_ITEM_INDEX = FOCUSABLE_CHILDREN.indexOf(document.activeElement);
-    if (event.keyCode === 9 || event.code === 'Tab') {
+    if (event.code === 'Tab') {
       // If the SHIFT key is being pressed while tabbing (moving backwards) and
       // the currently focused item is the first one, move the focus to the last
       // focusable item from the slide
@@ -1206,15 +1155,15 @@ function Tobii(userOptions) {
         FOCUSABLE_CHILDREN[0].focus();
         event.preventDefault();
       }
-    } else if (event.keyCode === 27 || event.code === 'Escape') {
+    } else if (event.code === 'Escape') {
       // `ESC` Key: Close Tobii
       event.preventDefault();
       close();
-    } else if (event.keyCode === 37 || event.code === 'ArrowLeft') {
+    } else if (event.code === 'ArrowLeft') {
       // `PREV` Key: Show the previous slide
       event.preventDefault();
       previous();
-    } else if (event.keyCode === 39 || event.code === 'ArrowRight') {
+    } else if (event.code === 'ArrowRight') {
       // `NEXT` Key: Show the next slide
       event.preventDefault();
       next();
@@ -1382,9 +1331,6 @@ function Tobii(userOptions) {
    *
    */
   const wheelHandler = event => {
-    if (!isZoomableElement(event.target)) {
-      return;
-    }
     const deltaScale = Math.sign(event.deltaY) > 0 ? -1 : 1;
     if (!isZoomed() && !deltaScale) return;
     event.preventDefault();
@@ -1435,7 +1381,7 @@ function Tobii(userOptions) {
     element.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
   };
   const zoomPan = (el, newScale, x, y, deltaX, deltaY) => {
-    if (!isZoomableElement(el)) return;
+    if (el.tagName !== 'IMG') return;
     const {
       left,
       top
@@ -1561,27 +1507,11 @@ function Tobii(userOptions) {
    *
    */
   const reset = () => {
-    if (isOpen()) {
-      close();
-    }
-
-    // TODO Cleanup
-    const GROUPS_ENTRIES = Object.entries(groups);
-    GROUPS_ENTRIES.forEach(groupsEntrie => {
-      const SLIDE_ELS = groupsEntrie[1].gallery;
-
-      // Remove slides
-      SLIDE_ELS.forEach(slideEl => {
-        remove(slideEl);
-      });
-    });
+    if (isOpen()) close();
+    Object.values(groups).forEach(group => group.gallery.forEach(remove));
     groups = {};
     activeGroup = null;
-    for (const i in SUPPORTED_ELEMENTS) {
-      SUPPORTED_ELEMENTS[i].onReset();
-    }
-
-    // TODO
+    Object.values(SUPPORTED_ELEMENTS).forEach(type => type.onReset());
   };
 
   /**
@@ -1615,14 +1545,6 @@ function Tobii(userOptions) {
    */
   const isIgnoreElement = el => {
     return ['TEXTAREA', 'OPTION', 'INPUT', 'SELECT'].indexOf(el.tagName) !== -1 || el === prevButton || el === nextButton || el === closeButton;
-  };
-
-  /**
-   * Checks whether an element is zoomable
-   *
-   */
-  const isZoomableElement = el => {
-    return el.tagName === 'IMG';
   };
 
   /**
@@ -1669,23 +1591,24 @@ function Tobii(userOptions) {
     lightbox.removeEventListener(eventName, callback);
   };
   init(userOptions);
-  Tobii.open = open;
-  Tobii.previous = previous;
-  Tobii.next = next;
-  Tobii.close = close;
-  Tobii.add = checkDependencies;
-  Tobii.remove = remove;
-  Tobii.reset = reset;
-  Tobii.destroy = destroy;
-  Tobii.isOpen = isOpen;
-  Tobii.slidesIndex = slidesIndex;
-  Tobii.select = select;
-  Tobii.slidesCount = slidesCount;
-  Tobii.selectGroup = selectGroup;
-  Tobii.currentGroup = currentGroup;
-  Tobii.on = on;
-  Tobii.off = off;
-  return Tobii;
+  return {
+    open,
+    previous,
+    next,
+    close,
+    add: checkDependencies,
+    remove,
+    reset,
+    destroy,
+    isOpen,
+    slidesIndex,
+    select,
+    slidesCount,
+    selectGroup,
+    currentGroup,
+    on,
+    off
+  };
 }
 
 export { Tobii as default };
