@@ -47,19 +47,17 @@ class IframeType {
 
       IFRAME.setAttribute('frameborder', '0')
       IFRAME.setAttribute('src', HREF)
+      IFRAME.setAttribute('allowfullscreen', '')
 
-      // Set allow parameters
-      let allowValue = 'fullscreen'
-
-      if (HREF.includes('youtube.com')) {
-        allowValue += '; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
-      } else if (HREF.includes('vimeo.com')) {
-        allowValue += '; autoplay; picture-in-picture'
+      // set allow parameters
+      if (HREF.indexOf('youtube.com') > -1) {
+        IFRAME.setAttribute('allow',
+          'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+      } else if (HREF.indexOf('vimeo.com') > -1) {
+        IFRAME.setAttribute('allow', 'autoplay; picture-in-picture')
       } else if (container.hasAttribute('data-allow')) {
-        allowValue = container.getAttribute('data-allow')
+        IFRAME.setAttribute('allow', container.getAttribute('data-allow'))
       }
-
-      IFRAME.setAttribute('allow', allowValue)
 
       if (container.hasAttribute('data-width')) {
         IFRAME.style.maxWidth = `${container.getAttribute('data-width')}`
@@ -75,15 +73,20 @@ class IframeType {
       // Add iframe to container
       container.appendChild(IFRAME)
 
-      // Handle load and error
-      const removeLoader = () => {
+      IFRAME.addEventListener('load', () => {
         IFRAME.style.opacity = '1'
         const LOADING_INDICATOR = container.querySelector('.tobii__loader')
-        if (LOADING_INDICATOR) container.removeChild(LOADING_INDICATOR)
-      }
-
-      IFRAME.addEventListener('load', removeLoader)
-      IFRAME.addEventListener('error', removeLoader)
+        if (LOADING_INDICATOR) {
+          container.removeChild(LOADING_INDICATOR)
+        }
+      })
+      IFRAME.addEventListener('error', () => {
+        IFRAME.style.opacity = '1'
+        const LOADING_INDICATOR = container.querySelector('.tobii__loader')
+        if (LOADING_INDICATOR) {
+          container.removeChild(LOADING_INDICATOR)
+        }
+      })
     } else {
       // was already created
       IFRAME.setAttribute('src', container.getAttribute('data-href'))
@@ -96,7 +99,7 @@ class IframeType {
 
   onCleanup (container) {
     const IFRAME = container.querySelector('iframe')
-    IFRAME.removeAttribute('src')
+    IFRAME.setAttribute('src', '')
     IFRAME.style.opacity = '0'
   }
 

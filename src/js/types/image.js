@@ -62,16 +62,11 @@ class ImageType {
       FIGCAPTION.appendChild(SPAN)
 
       if (this.userSettings.captionToggle) {
-        const isMobile = window.innerWidth < 768
         const BUTTON = document.createElement('button')
         BUTTON.className = 'caption-toggle'
-        BUTTON.textContent = BUTTON.title = this.userSettings.captionToggleLabel[isMobile ? 1 : 0]
+        BUTTON.textContent = BUTTON.title = this.userSettings.captionToggleLabel[0]
         BUTTON.setAttribute('aria-controls', FIGCAPTION.id)
-        BUTTON.setAttribute('aria-expanded', !isMobile)
-        if (isMobile) {
-          FIGCAPTION.classList.add('caption-hidden')
-        }
-        SPAN.setAttribute('aria-hidden', isMobile)
+        BUTTON.setAttribute('aria-expanded', true)
 
         const preventAndStopEvent = (event) => {
           event.preventDefault()
@@ -87,7 +82,6 @@ class ImageType {
             : this.userSettings.captionToggleLabel[0]
           BUTTON.textContent = BUTTON.title = buttonLabel
           BUTTON.setAttribute('aria-expanded', !isExpanded)
-          FIGCAPTION.classList.toggle('caption-hidden')
           SPAN.setAttribute('aria-hidden', isExpanded)
         })
 

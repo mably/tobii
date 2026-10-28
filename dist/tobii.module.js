@@ -52,16 +52,11 @@ class ImageType {
       }
       FIGCAPTION.appendChild(SPAN);
       if (this.userSettings.captionToggle) {
-        const isMobile = window.innerWidth < 768;
         const BUTTON = document.createElement('button');
         BUTTON.className = 'caption-toggle';
-        BUTTON.textContent = BUTTON.title = this.userSettings.captionToggleLabel[isMobile ? 1 : 0];
+        BUTTON.textContent = BUTTON.title = this.userSettings.captionToggleLabel[0];
         BUTTON.setAttribute('aria-controls', FIGCAPTION.id);
-        BUTTON.setAttribute('aria-expanded', !isMobile);
-        if (isMobile) {
-          FIGCAPTION.classList.add('caption-hidden');
-        }
-        SPAN.setAttribute('aria-hidden', isMobile);
+        BUTTON.setAttribute('aria-expanded', true);
         const preventAndStopEvent = event => {
           event.preventDefault();
           event.stopPropagation();
@@ -74,7 +69,6 @@ class ImageType {
           const buttonLabel = isExpanded ? this.userSettings.captionToggleLabel[1] : this.userSettings.captionToggleLabel[0];
           BUTTON.textContent = BUTTON.title = buttonLabel;
           BUTTON.setAttribute('aria-expanded', !isExpanded);
-          FIGCAPTION.classList.toggle('caption-hidden');
           SPAN.setAttribute('aria-hidden', isExpanded);
         });
         FIGCAPTION.appendChild(BUTTON);
@@ -183,17 +177,16 @@ class IframeType {
       const HREF = container.getAttribute('data-href');
       IFRAME.setAttribute('frameborder', '0');
       IFRAME.setAttribute('src', HREF);
+      IFRAME.setAttribute('allowfullscreen', '');
 
-      // Set allow parameters
-      let allowValue = 'fullscreen';
-      if (HREF.includes('youtube.com')) {
-        allowValue += '; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-      } else if (HREF.includes('vimeo.com')) {
-        allowValue += '; autoplay; picture-in-picture';
+      // set allow parameters
+      if (HREF.indexOf('youtube.com') > -1) {
+        IFRAME.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+      } else if (HREF.indexOf('vimeo.com') > -1) {
+        IFRAME.setAttribute('allow', 'autoplay; picture-in-picture');
       } else if (container.hasAttribute('data-allow')) {
-        allowValue = container.getAttribute('data-allow');
+        IFRAME.setAttribute('allow', container.getAttribute('data-allow'));
       }
-      IFRAME.setAttribute('allow', allowValue);
       if (container.hasAttribute('data-width')) {
         IFRAME.style.maxWidth = `${container.getAttribute('data-width')}`;
       }
@@ -206,15 +199,20 @@ class IframeType {
 
       // Add iframe to container
       container.appendChild(IFRAME);
-
-      // Handle load and error
-      const removeLoader = () => {
+      IFRAME.addEventListener('load', () => {
         IFRAME.style.opacity = '1';
         const LOADING_INDICATOR = container.querySelector('.tobii__loader');
-        if (LOADING_INDICATOR) container.removeChild(LOADING_INDICATOR);
-      };
-      IFRAME.addEventListener('load', removeLoader);
-      IFRAME.addEventListener('error', removeLoader);
+        if (LOADING_INDICATOR) {
+          container.removeChild(LOADING_INDICATOR);
+        }
+      });
+      IFRAME.addEventListener('error', () => {
+        IFRAME.style.opacity = '1';
+        const LOADING_INDICATOR = container.querySelector('.tobii__loader');
+        if (LOADING_INDICATOR) {
+          container.removeChild(LOADING_INDICATOR);
+        }
+      });
     } else {
       // was already created
       IFRAME.setAttribute('src', container.getAttribute('data-href'));
@@ -225,7 +223,7 @@ class IframeType {
   }
   onCleanup(container) {
     const IFRAME = container.querySelector('iframe');
-    IFRAME.removeAttribute('src');
+    IFRAME.setAttribute('src', '');
     IFRAME.style.opacity = '0';
   }
   onReset() {
@@ -321,7 +319,7 @@ class HtmlType {
     const SOURCES = el.querySelectorAll('src');
     if (SOURCES) {
       SOURCES.forEach(source => {
-        source.removeAttribute('src');
+        source.setAttribute('src', '');
       });
     }
   }
@@ -384,7 +382,7 @@ class YoutubeType {
  * Tobii
  *
  * @author midzer
- * @version 3.2.0
+ * @version 3.1.1
  * @url https://github.com/midzer/tobii
  *
  * MIT License
@@ -424,7 +422,6 @@ function Tobii(userOptions) {
   let activeGroup = null;
   let pointerDownCache = [];
   let lastTapTime = 0;
-  let liveRegion = null;
   const MIN_SCALE = 1;
   const MAX_SCALE = 4;
   const DOUBLE_TAP_TIME = 500; // milliseconds
@@ -465,7 +462,6 @@ function Tobii(userOptions) {
       nav: 'auto',
       navText: ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="15 6 9 12 15 18" /></svg>', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><polyline points="9 6 15 12 9 18" /></svg>'],
       navLabel: ['Previous image', 'Next image'],
-      announcementLabel: ['Slide', 'of'],
       close: true,
       closeText: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke="none" d="M0 0h24v24H0z"/><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>',
       closeLabel: 'Close lightbox',
@@ -535,13 +531,6 @@ function Tobii(userOptions) {
     counter = document.createElement('div');
     counter.className = 'tobii__counter';
     lightbox.appendChild(counter);
-
-    // Create the live region
-    liveRegion = document.createElement('div');
-    liveRegion.className = 'tobii__sr';
-    liveRegion.setAttribute('aria-live', 'polite');
-    liveRegion.setAttribute('aria-atomic', 'true');
-    lightbox.appendChild(liveRegion);
 
     // Append to body
     document.body.appendChild(lightbox);
@@ -643,25 +632,25 @@ function Tobii(userOptions) {
       el.addEventListener('click', triggerTobii);
 
       // Create slide
-      const SLIDE_ELEMENT = document.createElement('div');
-      const SLIDE_ELEMENT_CONTENT = document.createElement('div');
-      SLIDE_ELEMENT.className = 'tobii__slide';
-      SLIDE_ELEMENT.style.position = 'absolute';
-      SLIDE_ELEMENT.style.left = `${groups[newGroup].x * 100}%`;
+      const SLIDER_ELEMENT = document.createElement('div');
+      const SLIDER_ELEMENT_CONTENT = document.createElement('div');
+      SLIDER_ELEMENT.className = 'tobii__slide';
+      SLIDER_ELEMENT.style.position = 'absolute';
+      SLIDER_ELEMENT.style.left = `${groups[newGroup].x * 100}%`;
 
       // Hide slide
-      SLIDE_ELEMENT.setAttribute('aria-hidden', 'true');
+      SLIDER_ELEMENT.setAttribute('aria-hidden', 'true');
 
       // Create type elements
       const model = getModel(el);
-      model.init(el, SLIDE_ELEMENT_CONTENT, userSettings);
+      model.init(el, SLIDER_ELEMENT_CONTENT, userSettings);
 
-      // Add slide content container to slide element
-      SLIDE_ELEMENT.appendChild(SLIDE_ELEMENT_CONTENT);
+      // Add slide content container to slider element
+      SLIDER_ELEMENT.appendChild(SLIDER_ELEMENT_CONTENT);
 
-      // Add slide element to slider
-      groups[newGroup].slider.appendChild(SLIDE_ELEMENT);
-      groups[newGroup].sliderElements.push(SLIDE_ELEMENT);
+      // Add slider element to slider
+      groups[newGroup].slider.appendChild(SLIDER_ELEMENT);
+      groups[newGroup].sliderElements.push(SLIDER_ELEMENT);
       ++groups[newGroup].x;
       if (isOpen() && newGroup === activeGroup) {
         updateConfig();
@@ -685,7 +674,7 @@ function Tobii(userOptions) {
     if (galleryIndex === -1) {
       throw new Error(`Ups, I can't find a slide for the element ${el}.`);
     }
-    const SLIDE_ELEMENT = groups[GROUP_NAME].sliderElements[galleryIndex];
+    const SLIDE_EL = groups[GROUP_NAME].sliderElements[galleryIndex];
 
     // If the element to be removed is the currently visible slide
     if (isOpen() && GROUP_NAME === activeGroup && galleryIndex === groups[GROUP_NAME].currentIndex) {
@@ -719,7 +708,7 @@ function Tobii(userOptions) {
     el.removeEventListener('click', triggerTobii);
 
     // Remove slide
-    SLIDE_ELEMENT.parentNode.removeChild(SLIDE_ELEMENT);
+    SLIDE_EL.parentNode.removeChild(SLIDE_EL);
   };
   const getModel = el => {
     const type = el.getAttribute('data-type');
@@ -870,6 +859,10 @@ function Tobii(userOptions) {
     }
     const CONTAINER = groups[activeGroup].sliderElements[index].querySelector('[data-type]');
     const model = getModel(CONTAINER);
+
+    // Add active slide class
+    groups[activeGroup].sliderElements[index].classList.add('tobii__slide--is-active');
+    groups[activeGroup].sliderElements[index].setAttribute('aria-hidden', 'false');
     model.onLoad(CONTAINER, activeGroup);
   };
 
@@ -991,6 +984,10 @@ function Tobii(userOptions) {
     }
     const CONTAINER = groups[activeGroup].sliderElements[index].querySelector('[data-type]');
     const model = getModel(CONTAINER);
+
+    // Remove active slide class
+    groups[activeGroup].sliderElements[index].classList.remove('tobii__slide--is-active');
+    groups[activeGroup].sliderElements[index].setAttribute('aria-hidden', 'true');
     model.onLeave(CONTAINER);
   };
 
@@ -1064,6 +1061,15 @@ function Tobii(userOptions) {
     } else if (userSettings.close) {
       closeButton.focus();
     }
+    if (hasMultipleSlides && group.currentIndex !== 0) {
+      const focusableFigure = getFocusableFigure();
+      if (focusableFigure) {
+        // Small delay to avoid display bug
+        setTimeout(() => {
+          focusableFigure.focus();
+        }, 250);
+      }
+    }
   };
 
   /**
@@ -1100,6 +1106,26 @@ function Tobii(userOptions) {
   };
 
   /**
+   * Get the focusable children of the given element
+   *
+   * @return {Array<Element>}
+   */
+  const getFocusableChildren = () => {
+    return Array.prototype.slice.call(lightbox.querySelectorAll(`.tobii__btn:not([disabled]), .tobii__slide--is-active ${FOCUSABLE_ELEMENTS.join(', .tobii__slide--is-active ')}`)).filter(child => {
+      return !!(child.offsetWidth || child.offsetHeight || child.getClientRects().length);
+    });
+  };
+
+  /**
+   * Get the programmatically focusable figure of the given element
+   *
+   * @return {Element|null}
+   */
+  const getFocusableFigure = () => {
+    return lightbox.querySelector('.tobii__slide--is-active figure[tabindex="-1"]');
+  };
+
+  /**
    * Set the hidden/disabled state of a button
    *
    */
@@ -1113,17 +1139,20 @@ function Tobii(userOptions) {
    *
    */
   const keydownHandler = event => {
+    const FOCUSABLE_CHILDREN = getFocusableChildren();
+    const FOCUSED_ITEM_INDEX = FOCUSABLE_CHILDREN.indexOf(document.activeElement);
     if (event.code === 'Tab') {
-      const FOCUSABLE = Array.from(lightbox.querySelectorAll(FOCUSABLE_ELEMENTS.join(', ')));
-      if (FOCUSABLE.length === 0) return;
-      const FOCUSED_INDEX = FOCUSABLE.findIndex(el => el === document.activeElement);
-      if (event.shiftKey && FOCUSED_INDEX === 0) {
-        // SHIFT+Tab on first → jump to last
-        FOCUSABLE[FOCUSABLE.length - 1].focus();
+      // If the SHIFT key is being pressed while tabbing (moving backwards) and
+      // the currently focused item is the first one, move the focus to the last
+      // focusable item from the slide
+      if (event.shiftKey && FOCUSED_ITEM_INDEX === 0) {
+        FOCUSABLE_CHILDREN[FOCUSABLE_CHILDREN.length - 1].focus();
         event.preventDefault();
-      } else if (!event.shiftKey && FOCUSED_INDEX === FOCUSABLE.length - 1) {
-        // Tab on last → jump to first
-        FOCUSABLE[0].focus();
+        // If the SHIFT key is not being pressed (moving forwards) and the currently
+        // focused item is the last one, move the focus to the first focusable item
+        // from the slide
+      } else if (!event.shiftKey && (FOCUSED_ITEM_INDEX === FOCUSABLE_CHILDREN.length - 1 || FOCUSED_ITEM_INDEX === -1)) {
+        FOCUSABLE_CHILDREN[0].focus();
         event.preventDefault();
       }
     } else if (event.code === 'Escape') {
@@ -1463,32 +1492,6 @@ function Tobii(userOptions) {
   };
 
   /**
-   * Update live region
-   *
-   */
-  const updateAnnouncement = () => {
-    const group = groups[activeGroup];
-    const currIndex = group.currentIndex;
-    const total = group.elementsLength;
-    const trigger = group.gallery[currIndex];
-    const [slide, of] = userSettings.announcementLabel;
-    let extra;
-    if (trigger.hasAttribute('data-label')) {
-      extra = trigger.getAttribute('data-label');
-    } else {
-      const img = trigger.querySelector('img');
-      extra = img?.alt || '';
-    }
-    const base = `${slide} ${currIndex + 1} ${of} ${total}`;
-
-    // Announce reliably
-    liveRegion.textContent = '';
-    window.setTimeout(() => {
-      liveRegion.textContent = extra ? `${base}. ${extra}` : base;
-    }, 10);
-  };
-
-  /**
    * Update lightbox
    *
    * @param {string|null} dir - Current slide direction
@@ -1496,7 +1499,6 @@ function Tobii(userOptions) {
   const updateLightbox = (dir = null) => {
     updateOffset();
     updateCounter();
-    updateAnnouncement();
     updateFocus(dir);
   };
 
