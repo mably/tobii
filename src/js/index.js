@@ -60,7 +60,7 @@ export default function Tobii (userOptions) {
   let pointerDownCache = []
   let lastTapTime = 0
   let liveRegion = null
-  let figureFocusTimeout = null
+  let slideChangeTimeout = null
   const MIN_SCALE = 1
   const MAX_SCALE = 4
   const DOUBLE_TAP_TIME = 500 // milliseconds
@@ -489,7 +489,7 @@ export default function Tobii (userOptions) {
       }
     }
 
-    clearTimeout(figureFocusTimeout)
+    clearTimeout(slideChangeTimeout)
 
     // Reenable the user’s focus
     lastFocus.focus()
@@ -777,19 +777,24 @@ export default function Tobii (userOptions) {
       closeButton.focus({ preventScroll: true })
     }
 
-    // A pending focus belongs to a slide that is no longer shown
-    clearTimeout(figureFocusTimeout)
+    // A pending focus or announcement belongs to a slide that is no longer shown
+    clearTimeout(slideChangeTimeout)
+    liveRegion.textContent = ''
 
-    if (hasMultipleSlides && group.currentIndex !== 0) {
-      const focusableFigure = getFocusableFigure()
+    // Small delay to avoid display bug
+    slideChangeTimeout = setTimeout(() => {
+      const focusableFigure = hasMultipleSlides && group.currentIndex !== 0 ? getFocusableFigure() : null
+
       if (focusableFigure) {
-        // Small delay to avoid display bug
-        figureFocusTimeout = setTimeout(() => {
-          // Scrolling the lightbox to the figure would shift the slider
-          focusableFigure.focus({ preventScroll: true })
-        }, 250)
+        // Scrolling the lightbox to the figure would shift the slider
+        focusableFigure.focus({ preventScroll: true })
       }
-    }
+
+      // Announce after the focus moved, or the screen reader drops the
+      // announcement to read the focused element. A focused figure is read
+      // with its image, so the announcement then only gives the position.
+      updateAnnouncement(!focusableFigure)
+    }, 250)
   }
 
   /**
@@ -1271,8 +1276,9 @@ export default function Tobii (userOptions) {
   /**
    * Update live region
    *
+   * @param {boolean} withDescription - Add the image description to the position
    */
-  const updateAnnouncement = () => {
+  const updateAnnouncement = (withDescription) => {
     const group = groups[activeGroup]
     const currIndex = group.currentIndex
     const total = group.elementsLength
@@ -1289,11 +1295,8 @@ export default function Tobii (userOptions) {
 
     const base = `${slide} ${currIndex + 1} ${of} ${total}`
 
-    // Announce reliably
-    liveRegion.textContent = ''
-    window.setTimeout(() => {
-      liveRegion.textContent = extra ? `${base}. ${extra}` : base
-    }, 10)
+    // The live region was emptied when the slide changed
+    liveRegion.textContent = withDescription && extra ? `${base}. ${extra}` : base
   }
 
   /**
@@ -1304,7 +1307,6 @@ export default function Tobii (userOptions) {
   const updateLightbox = (dir = null) => {
     updateOffset()
     updateCounter()
-    updateAnnouncement()
     updateFocus(dir)
   }
 
