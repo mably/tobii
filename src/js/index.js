@@ -2,7 +2,7 @@
  * Tobii
  *
  * @author midzer
- * @version 3.2.0
+ * @version 3.2.1
  * @url https://github.com/midzer/tobii
  *
  * MIT License
@@ -1153,7 +1153,17 @@ export default function Tobii (userOptions) {
     const newOriginX = originX / TRANSFORM.scale
     const newOriginY = originY / TRANSFORM.scale
 
+    deltaX += (newOriginX - TRANSFORM.originX) * (TRANSFORM.scale - 1)
+    deltaY += (newOriginY - TRANSFORM.originY) * (TRANSFORM.scale - 1)
+
     TRANSFORM.element = el
+
+    // Back to the original size: drop the translation the origin shifts added
+    if (newScale === MIN_SCALE) {
+      resetZoom()
+      return
+    }
+
     TRANSFORM.originX = newOriginX
     TRANSFORM.originY = newOriginY
     TRANSFORM.scale = newScale
